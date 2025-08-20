@@ -1,3 +1,4 @@
+using Api.Services;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +12,7 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
+builder.Services.AddScoped<IEmailService, MockEmailService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
