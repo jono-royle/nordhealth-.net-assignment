@@ -1,4 +1,5 @@
 using Api.Data;
+using Api.DTOs;
 using Api.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -37,5 +38,34 @@ public class AppointmentController : ControllerBase
             return NotFound();
         }
         return Ok(appointment);
+    }
+
+    [HttpGet("appointments/{vetId}")]
+    public ActionResult<List<AppointmentDTO>> ListVetAppointments(Guid vetId, DateTime startDate, DateTime endDate)
+    {
+        if(startDate > endDate)
+        {
+            return BadRequest("Start date must be before end date");
+        }
+        var appointments = AppointmentData.Appointments.Where(a => a.VeterinarianId == vetId && a.StartTime > startDate && a.StartTime <= endDate);
+        var appointmentData = appointments.Select(a => GetAppointmentData(a)).ToList();
+        return Ok(appointmentData);
+    }
+
+    private AppointmentDTO GetAppointmentData(Appointment appointment)
+    {
+        AppointmentDTO appointmentDTO = new AppointmentDTO
+        {
+            StartTime = appointment.StartTime,
+            AppointmentStatus = appointment.Status
+        };
+        var animal = AnimalData.Animals.FirstOrDefault(a => a.Id == appointment.AnimalId);
+        if(animal != null)
+        {
+            appointmentDTO.OwnerName = animal.OwnerName;
+            appointmentDTO.AnimalName = animal.Name;
+        }
+        return appointmentDTO;
+
     }
 }
