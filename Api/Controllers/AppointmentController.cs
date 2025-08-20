@@ -1,6 +1,7 @@
 using Api.Data;
 using Api.DTOs;
 using Api.Models;
+using Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -9,6 +10,13 @@ namespace Api.Controllers;
 [Route("api/[controller]")]
 public class AppointmentController : ControllerBase
 {
+    private readonly IEmailService _emailService;
+
+    public AppointmentController(IEmailService emailService)
+    {
+        _emailService = emailService;
+    }
+
     [HttpPost]
     public ActionResult<Animal> CreateAppointment([FromBody] Appointment appointment)
     {
@@ -50,6 +58,36 @@ public class AppointmentController : ControllerBase
         var appointments = AppointmentData.Appointments.Where(a => a.VeterinarianId == vetId && a.StartTime > startDate && a.StartTime <= endDate);
         var appointmentData = appointments.Select(a => GetAppointmentData(a)).ToList();
         return Ok(appointmentData);
+    }
+
+    [HttpPatch("appointments/update/{appointmentId}")]
+    public async Task<ActionResult<Appointment>> UpdateAppointmentStatus(Guid appointmentId, AppointmentStatus newStatus)
+    {
+        if(newStatus != AppointmentStatus.Scheduled && newStatus != AppointmentStatus.Completed && newStatus != AppointmentStatus.Cancelled)
+        {
+            return BadRequest("Appointment status must be set to Scheduled, Completed or Canceled");
+        }
+        var appointment = AppointmentData.Appointments.FirstOrDefault(a => a.Id == appointmentId);
+        if (appointment == null)
+        {
+            return NotFound();
+        }
+        if(newStatus == AppointmentStatus.Cancelled)
+        {
+            if (appointment.StartTime > DateTime.Now && appointment.StartTime - DateTime.Now < TimeSpan.FromHours(1))
+            {
+                return BadRequest("Cannot cancel an appointment less than 1 hour before start time");
+            }
+
+            var animal = AnimalData.Animals.FirstOrDefault(a => a.OwnerId == appointment.CustomerId);
+            if(animal != null)
+            {
+                //Send email to user
+                await _emailService.SendEmailAsync(animal.OwnerEmail);
+            }
+        }
+        appointment.Status = newStatus;
+        return Ok(appointment);
     }
 
     private AppointmentDTO GetAppointmentData(Appointment appointment)
