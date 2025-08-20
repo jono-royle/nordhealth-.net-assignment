@@ -1,8 +1,10 @@
 using Api.Data;
 using Api.DTOs;
 using Api.Models;
+using Api.Repositories;
 using Api.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Api.Controllers;
 
@@ -11,14 +13,16 @@ namespace Api.Controllers;
 public class AppointmentController : ControllerBase
 {
     private readonly IEmailService _emailService;
+    private readonly IDBRepository<Appointment> _appointmentRepository;
 
-    public AppointmentController(IEmailService emailService)
+    public AppointmentController(IEmailService emailService, IDBRepository<Appointment> appRepository)
     {
         _emailService = emailService;
+        _appointmentRepository = appRepository;
     }
 
     [HttpPost]
-    public ActionResult<Animal> CreateAppointment([FromBody] Appointment appointment)
+    public async Task<ActionResult<Animal>> CreateAppointment([FromBody] Appointment appointment)
     {
         if (appointment == null)
         {
@@ -32,30 +36,37 @@ public class AppointmentController : ControllerBase
 
         appointment.Id = Guid.NewGuid();
 
-        AppointmentData.Appointments.Add(appointment);
+        await _appointmentRepository.AddAsync(appointment);
 
         return CreatedAtAction(nameof(GetAppointment), new { id = appointment.Id }, appointment);
     }
 
     [HttpGet("{id}")]
-    public ActionResult<Appointment> GetAppointment(Guid id)
+    public async Task<ActionResult<Appointment>> GetAppointment(Guid id)
     {
-        var appointment = AppointmentData.Appointments.FirstOrDefault(a => a.Id == id);
+        var appointment = await _appointmentRepository.GetByIdAsync(id, a => a.Customer, a => a.Veterinarian, a => a.Animal);
         if (appointment == null)
         {
             return NotFound();
         }
-        return Ok(appointment);
+        var dto = GetAppointmentData(appointment);
+        return Ok(dto);
     }
 
     [HttpGet("appointments/{vetId}")]
-    public ActionResult<List<AppointmentDTO>> ListVetAppointments(Guid vetId, DateTime startDate, DateTime endDate)
+    public async Task<ActionResult<List<AppointmentDTO>>> ListVetAppointments(Guid vetId, DateTime startDate, DateTime endDate)
     {
         if(startDate > endDate)
         {
             return BadRequest("Start date must be before end date");
         }
-        var appointments = AppointmentData.Appointments.Where(a => a.VeterinarianId == vetId && a.StartTime > startDate && a.StartTime <= endDate);
+        var appointments = await _appointmentRepository
+            .QueryAsync().Where(a => a.VeterinarianId == vetId && a.StartTime > startDate && a.StartTime <= endDate)
+            .Include(a => a.Veterinarian)
+            .Include(a => a.Animal)
+            .Include(a => a.Customer)
+            .ToListAsync();
+
         var appointmentData = appointments.Select(a => GetAppointmentData(a)).ToList();
         return Ok(appointmentData);
     }
@@ -67,7 +78,7 @@ public class AppointmentController : ControllerBase
         {
             return BadRequest("Appointment status must be set to Scheduled, Completed or Canceled");
         }
-        var appointment = AppointmentData.Appointments.FirstOrDefault(a => a.Id == appointmentId);
+        var appointment = await _appointmentRepository.GetByIdAsync(appointmentId, a => a.Customer, a => a.Veterinarian, a => a.Animal);
         if (appointment == null)
         {
             return NotFound();
@@ -78,16 +89,15 @@ public class AppointmentController : ControllerBase
             {
                 return BadRequest("Cannot cancel an appointment less than 1 hour before start time");
             }
-
-            var animal = AnimalData.Animals.FirstOrDefault(a => a.OwnerId == appointment.CustomerId);
-            if(animal != null)
+            if (appointment.Customer != null) 
             {
-                //Send email to user
-                await _emailService.SendEmailAsync(animal.OwnerEmail);
+                await _emailService.SendEmailAsync(appointment.Customer.Email);
             }
         }
         appointment.Status = newStatus;
-        return Ok(appointment);
+        await _appointmentRepository.UpdateAsync(appointment);
+        var dto = GetAppointmentData(appointment);
+        return Ok(dto);
     }
 
     private AppointmentDTO GetAppointmentData(Appointment appointment)
@@ -95,14 +105,13 @@ public class AppointmentController : ControllerBase
         AppointmentDTO appointmentDTO = new AppointmentDTO
         {
             StartTime = appointment.StartTime,
-            AppointmentStatus = appointment.Status
+            EndTime = appointment.EndTime,
+            AppointmentStatus = appointment.Status,
+            OwnerName = appointment.Customer?.Name,
+            AnimalName = appointment.Animal?.Name,
+            VetName = appointment.Veterinarian?.Name
         };
-        var animal = AnimalData.Animals.FirstOrDefault(a => a.Id == appointment.AnimalId);
-        if(animal != null)
-        {
-            appointmentDTO.OwnerName = animal.OwnerName;
-            appointmentDTO.AnimalName = animal.Name;
-        }
+
         return appointmentDTO;
 
     }

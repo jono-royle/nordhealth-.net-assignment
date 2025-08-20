@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Api.Models;
 
 public class Animal
@@ -8,9 +10,11 @@ public class Animal
 
     public DateTime BirthDate { get; set; }
 
-    public Guid OwnerId { get; set; }
+    public Guid CustomerId { get; set; }
 
-    public string OwnerName { get; set; } = string.Empty;
+    [JsonIgnore]
+    public Customer? Owner { get; set; }
 
-    public string OwnerEmail { get; set; } = string.Empty;
+    [JsonIgnore]
+    public List<Appointment>? Appointments { get; set; }
 }

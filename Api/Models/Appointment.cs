@@ -26,4 +26,8 @@ public class Appointment
     public AppointmentStatus Status { get; set; } = AppointmentStatus.Scheduled;
 
     public string? Notes { get; set; }
+
+    public Animal? Animal { get; set; }
+    public Customer? Customer { get; set; }
+    public Veterinarian? Veterinarian { get; set; }
 }
