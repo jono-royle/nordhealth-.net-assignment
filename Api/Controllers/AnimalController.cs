@@ -3,6 +3,7 @@ using Api.DTOs;
 using Api.Models;
 using Api.Repositories;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Api.Controllers;
 
@@ -18,7 +19,7 @@ public class AnimalController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Animal>> CreateAnimal([FromBody] Animal animal)
+    public async Task<ActionResult<AnimalDTO>> CreateAnimal([FromBody] Animal animal)
     {
         if (animal == null)
         {
@@ -30,7 +31,16 @@ public class AnimalController : ControllerBase
             return BadRequest("Animal name is required.");
         }
 
+        var animalsFromSameOwner = await _animalRepository
+            .ScanAsync(s => s.Where(a => a.CustomerId == animal.CustomerId && a.Name == animal.Name));
+
+        if (animalsFromSameOwner.Any()) 
+        {
+            return BadRequest("Customer already has an animal with the same name");
+        }
+
         animal.Id = Guid.NewGuid();
+        animal.BirthDate = animal.BirthDate.ToUniversalTime();
 
         await _animalRepository.AddAsync(animal);
 
@@ -38,12 +48,12 @@ public class AnimalController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Animal>> GetAnimal(Guid id)
+    public async Task<ActionResult<AnimalDTO>> GetAnimal(Guid id)
     {
         var animal = await _animalRepository.GetByIdAsync(id);
         if (animal == null)
         {
-            return NotFound();
+            return NotFound("Animal not found.");
         }
         return Ok(GetAnimalData(animal));
     }
