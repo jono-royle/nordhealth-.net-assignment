@@ -42,6 +42,7 @@ public class AppointmentController : ControllerBase
         var overlappingAppointments = await _appointmentRepository
             .ScanAsync(s => s.Where(a =>
         (a.VeterinarianId == appointment.VeterinarianId || a.CustomerId == appointment.CustomerId) &&
+        (a.Status != AppointmentStatus.Cancelled) &&
         (
             (appointment.StartTime >= a.StartTime && appointment.StartTime < a.EndTime) ||   // starts during
             (appointment.EndTime > a.StartTime && appointment.EndTime <= a.EndTime) ||       // ends during
