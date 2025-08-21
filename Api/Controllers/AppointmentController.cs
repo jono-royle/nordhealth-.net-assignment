@@ -89,7 +89,7 @@ public class AppointmentController : ControllerBase
             {
                 return BadRequest("Cannot cancel an appointment less than 1 hour before start time");
             }
-            if (appointment.Customer != null) 
+            if (appointment.Customer != null && !string.IsNullOrEmpty(appointment.Customer.Email)) 
             {
                 await _emailService.SendEmailAsync(appointment.Customer.Email);
             }

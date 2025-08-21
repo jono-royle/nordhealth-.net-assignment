@@ -58,6 +58,7 @@ namespace Api.Data
             modelBuilder.Entity<Customer>().Property(x => x.Name).IsRequired();
             modelBuilder.Entity<Customer>().Property(x => x.Email).IsRequired();
             modelBuilder.Entity<Animal>().Property(x => x.Name).IsRequired();
+            modelBuilder.Entity<Veterinarian>().Property(x => x.Name).IsRequired();
         }
     }
 }
