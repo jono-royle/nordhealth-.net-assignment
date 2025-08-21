@@ -10,7 +10,7 @@ internal static class AppointmentData
         {
             Id = new Guid("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
             AnimalId = AnimalData.Animals.First().Id,
-            CustomerId = AnimalData.Animals.First().OwnerId,
+            CustomerId = AnimalData.Animals.First().CustomerId,
             StartTime = DateTime.Now.AddDays(1),
             EndTime = DateTime.Now.AddDays(1).AddHours(1),
             Notes = "Vet appointment",
@@ -21,7 +21,7 @@ internal static class AppointmentData
         {
             Id = new Guid("f47ac10b-58cc-4372-a567-0e02b2c3d480"),
             AnimalId = AnimalData.Animals.First().Id,
-            CustomerId = AnimalData.Animals.First().OwnerId,
+            CustomerId = AnimalData.Animals.First().CustomerId,
             Notes = "Follow-up check",
             StartTime = DateTime.Now.AddDays(2),
             EndTime = DateTime.Now.AddDays(2).AddHours(1),
@@ -32,7 +32,7 @@ internal static class AppointmentData
         {
             Id = new Guid("f47ac10b-58cc-4372-a567-0e02b2c3d481"),
             AnimalId = new Guid("f47ac10b-58cc-4372-a567-0e02b2c3d477"),
-            CustomerId = AnimalData.Animals.FirstOrDefault(a => a.Id == new Guid("f47ac10b-58cc-4372-a567-0e02b2c3d477")).OwnerId,
+            CustomerId = AnimalData.Animals.FirstOrDefault(a => a.Id == new Guid("f47ac10b-58cc-4372-a567-0e02b2c3d477")).CustomerId,
             Notes = "Follow-up check",
             StartTime = DateTime.Now.AddDays(2),
             EndTime = DateTime.Now.AddDays(2).AddHours(1),
