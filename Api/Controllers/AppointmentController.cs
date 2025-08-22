@@ -24,6 +24,9 @@ public class AppointmentController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<AppointmentDTO>> CreateAppointment([FromBody] Appointment appointment)
     {
+        appointment.StartTime = appointment.StartTime.ToUniversalTime();
+        appointment.EndTime = appointment.EndTime.ToUniversalTime();
+
         if (appointment == null)
         {
             return BadRequest("Appointment cannot be null.");
@@ -54,11 +57,8 @@ public class AppointmentController : ControllerBase
             return BadRequest("New appointment overlaps an existing appointment for Veterinarian or Customer");
         }
 
-
         appointment.Id = Guid.NewGuid();
         appointment.Status = AppointmentStatus.Scheduled;
-        appointment.StartTime = appointment.StartTime.ToUniversalTime();
-        appointment.EndTime = appointment.EndTime.ToUniversalTime();
 
         await _appointmentRepository.AddAsync(appointment);
 
@@ -84,6 +84,8 @@ public class AppointmentController : ControllerBase
         {
             return BadRequest("Start date must be before end date");
         }
+        startDate = startDate.ToUniversalTime();
+        endDate = endDate.ToUniversalTime();
         var appointments = await _appointmentRepository
             .ScanAsync(s => s.Where(a => a.VeterinarianId == vetId && a.StartTime > startDate && a.StartTime <= endDate)
             .Include(a => a.Veterinarian)
