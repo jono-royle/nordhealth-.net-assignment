@@ -41,8 +41,8 @@ namespace VetAppUnitTests
         private Appointment _appointment = new Appointment
         {
             Id = _appointmentId,
-            StartTime = DateTime.Now.AddDays(1),
-            EndTime = DateTime.Now.AddDays(1).AddHours(1),
+            StartTime = DateTime.UtcNow.AddDays(1),
+            EndTime = DateTime.UtcNow.AddDays(1).AddHours(1),
             AnimalId = _animal.Id,
             Animal = _animal,
             CustomerId = _customer.Id,
@@ -55,8 +55,8 @@ namespace VetAppUnitTests
         private Appointment _appointmentWithinHour = new Appointment
         {
             Id = _appointmentWithinHourId,
-            StartTime = DateTime.Now.AddMinutes(5),
-            EndTime = DateTime.Now.AddHours(1),
+            StartTime = DateTime.UtcNow.AddMinutes(5),
+            EndTime = DateTime.UtcNow.AddHours(1),
             AnimalId = _animal.Id,
             Animal = _animal,
             CustomerId = _customer.Id,

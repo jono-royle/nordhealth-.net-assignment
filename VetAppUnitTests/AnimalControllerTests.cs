@@ -29,6 +29,9 @@ namespace VetAppUnitTests
         {
             _dbRepository = new Mock<IDBRepository<Animal>>();
             _dbRepository.Setup(r => r.GetByIdAsync(_animalId)).ReturnsAsync(_animal);
+            _dbRepository.Setup(r => r.ScanAsync(It.IsAny<Func<IQueryable<Animal>, IQueryable<Animal>>>(),
+                               It.IsAny<CancellationToken>()))
+        .ReturnsAsync(new List<Animal>());
             _controller = new AnimalController(_dbRepository.Object);
         }
 
@@ -48,7 +51,7 @@ namespace VetAppUnitTests
         public async Task GetNullAnimal_ReturnsNotFound()
         {
             var result = await _controller.GetAnimal(Guid.NewGuid());
-            var notFound = result.Result as NotFoundResult;
+            var notFound = result.Result as NotFoundObjectResult;
             Assert.IsNotNull(notFound);
         }
 

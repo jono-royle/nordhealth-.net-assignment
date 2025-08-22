@@ -22,27 +22,51 @@ public class AppointmentController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Animal>> CreateAppointment([FromBody] Appointment appointment)
+    public async Task<ActionResult<AppointmentDTO>> CreateAppointment([FromBody] Appointment appointment)
     {
+        appointment.StartTime = appointment.StartTime.ToUniversalTime();
+        appointment.EndTime = appointment.EndTime.ToUniversalTime();
+
         if (appointment == null)
         {
             return BadRequest("Appointment cannot be null.");
         }
 
-        if (appointment.AnimalId == Guid.Empty || appointment.CustomerId == Guid.Empty)
+        if (appointment.AnimalId == Guid.Empty || appointment.CustomerId == Guid.Empty || appointment.VeterinarianId == Guid.Empty)
         {
-            return BadRequest("AnimalId and CustomerId are required.");
+            return BadRequest("AnimalId and CustomerId and VeterinarianId are required.");
+        }
+
+        if(appointment.StartTime >= appointment.EndTime)
+        {
+            return BadRequest("Start time must be before end time");
+        }
+
+        var overlappingAppointments = await _appointmentRepository
+            .ScanAsync(s => s.Where(a =>
+        (a.VeterinarianId == appointment.VeterinarianId || a.CustomerId == appointment.CustomerId) &&
+        (a.Status != AppointmentStatus.Cancelled) &&
+        (
+            (appointment.StartTime >= a.StartTime && appointment.StartTime < a.EndTime) ||   // starts during
+            (appointment.EndTime > a.StartTime && appointment.EndTime <= a.EndTime) ||       // ends during
+            (appointment.StartTime <= a.StartTime && appointment.EndTime >= a.EndTime)       // fully covers
+        )));
+
+        if (overlappingAppointments.Any())
+        {
+            return BadRequest("New appointment overlaps an existing appointment for Veterinarian or Customer");
         }
 
         appointment.Id = Guid.NewGuid();
+        appointment.Status = AppointmentStatus.Scheduled;
 
         await _appointmentRepository.AddAsync(appointment);
 
-        return CreatedAtAction(nameof(GetAppointment), new { id = appointment.Id }, appointment);
+        return CreatedAtAction(nameof(GetAppointment), new { id = appointment.Id }, GetAppointmentData(appointment));
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Appointment>> GetAppointment(Guid id)
+    public async Task<ActionResult<AppointmentDTO>> GetAppointment(Guid id)
     {
         var appointment = await _appointmentRepository.GetByIdAsync(id, a => a.Customer, a => a.Veterinarian, a => a.Animal);
         if (appointment == null)
@@ -54,25 +78,26 @@ public class AppointmentController : ControllerBase
     }
 
     [HttpGet("appointments/{vetId}")]
-    public async Task<ActionResult<List<AppointmentDTO>>> ListVetAppointments(Guid vetId, DateTime startDate, DateTime endDate)
+    public async Task<ActionResult<List<AppointmentDTO>>> ListVetAppointments(Guid vetId, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
     {
         if(startDate > endDate)
         {
             return BadRequest("Start date must be before end date");
         }
+        startDate = startDate.ToUniversalTime();
+        endDate = endDate.ToUniversalTime();
         var appointments = await _appointmentRepository
-            .QueryAsync().Where(a => a.VeterinarianId == vetId && a.StartTime > startDate && a.StartTime <= endDate)
+            .ScanAsync(s => s.Where(a => a.VeterinarianId == vetId && a.StartTime > startDate && a.StartTime <= endDate)
             .Include(a => a.Veterinarian)
             .Include(a => a.Animal)
-            .Include(a => a.Customer)
-            .ToListAsync();
+            .Include(a => a.Customer));
 
         var appointmentData = appointments.Select(a => GetAppointmentData(a)).ToList();
         return Ok(appointmentData);
     }
 
     [HttpPatch("appointments/update/{appointmentId}")]
-    public async Task<ActionResult<Appointment>> UpdateAppointmentStatus(Guid appointmentId, AppointmentStatus newStatus)
+    public async Task<ActionResult<AppointmentDTO>> UpdateAppointmentStatus(Guid appointmentId, AppointmentStatus newStatus)
     {
         if(newStatus != AppointmentStatus.Scheduled && newStatus != AppointmentStatus.Completed && newStatus != AppointmentStatus.Cancelled)
         {
@@ -85,13 +110,21 @@ public class AppointmentController : ControllerBase
         }
         if(newStatus == AppointmentStatus.Cancelled)
         {
-            if (appointment.StartTime > DateTime.Now && appointment.StartTime - DateTime.Now < TimeSpan.FromHours(1))
+            if (appointment.StartTime > DateTime.UtcNow && appointment.StartTime - DateTime.UtcNow < TimeSpan.FromHours(1))
             {
                 return BadRequest("Cannot cancel an appointment less than 1 hour before start time");
             }
             if (appointment.Customer != null && !string.IsNullOrEmpty(appointment.Customer.Email)) 
             {
-                await _emailService.SendEmailAsync(appointment.Customer.Email);
+                try
+                {
+                    await _emailService.SendEmailAsync(appointment.Customer.Email);
+                }
+                catch (Exception ex) 
+                {
+                    //Using console in place of error logging solution
+                    Console.WriteLine($"Email failed to send, exception: {ex}");
+                }
             }
         }
         appointment.Status = newStatus;

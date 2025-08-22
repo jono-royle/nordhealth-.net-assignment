@@ -54,9 +54,12 @@ namespace Api.Repositories
             return await query.FirstOrDefaultAsync(e => EF.Property<Guid>(e, "Id") == id);
         }
 
-        public IQueryable<T> QueryAsync()
+        public async Task<List<T>> ScanAsync(
+            Func<IQueryable<T>, IQueryable<T>> query,
+            CancellationToken ct = default)
         {
-            return _dbSet.AsQueryable();
+            var request = query(_db.Set<T>());
+            return await request.ToListAsync(ct);
         }
 
         public async Task UpdateAsync(T entity)

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Api.Models;
 
 public enum AppointmentStatus
@@ -11,6 +13,7 @@ public enum AppointmentStatus
 
 public class Appointment
 {
+    [JsonIgnore]
     public Guid Id { get; set; }
 
     public DateTime StartTime { get; set; }
@@ -27,7 +30,10 @@ public class Appointment
 
     public string? Notes { get; set; }
 
+    [JsonIgnore]
     public Animal? Animal { get; set; }
+    [JsonIgnore]
     public Customer? Customer { get; set; }
+    [JsonIgnore]
     public Veterinarian? Veterinarian { get; set; }
 }
