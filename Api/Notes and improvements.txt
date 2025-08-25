@@ -1,0 +1,12 @@
+I have added the new endpoints requested, switched to entity framework with a SQLite database (using an abstract database repository which allows for unit testing, of which I have added a small selection using mstest and the moq framework) and fixed some bugs and tidied the code with the existing endpoints.
+
+Potential improvements:
+- For consistency I have ensured all datetimes stored in the database are in UTC format, and then converted any incoming datetimes via endpoints to UTC. However it might be necessary to record customer timezones etc, so a more comprehensive date time handling method that still allows for consistent comparisons might be necessary.
+- I have added a single database repository, which allows users of the API access to entity framework linq queries using the ScanAsync function. This is useful for an internal API, but might be too risky if this was a customer facing API - if so could change to individual repositories for different database tables with more specific methods. 
+- I have handled some problematic inputs manually in the API e.g not allowing a customer to have two pets with the same name, but this could potentially be handled better through constraints on the database design depending on the needs of the system.
+
+Potential evolutions:
+- I have added Customer and Veterinarian models as part of adding the SQLite data, obviously these could have equivalent controllers with necessary endpoints, as well as filling in missing endpoints for the original two controllers.
+- The solution would need comprehensive error logging to alert developers to issues as they arise, provide callstacks etc
+- The solution is currently completely unauthorized, so would need a login system and then use something like AspNetCore.Authorization to prevent anyone with the url changing the database.
+- If planning to scale to large data sets, will need to look at using paging to prevent requesting too much data at once
